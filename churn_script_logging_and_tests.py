@@ -122,7 +122,8 @@ def test_train_models(train_models, X_train, X_test, y_train, y_test):
     for file in [
         'rf_class_report',
         'lr_class_report',
-        'random_forrest_importances'
+        'random_forest_importances',
+        'roc_curve'
     ]:
 
         try:
@@ -137,7 +138,7 @@ def test_train_models(train_models, X_train, X_test, y_train, y_test):
     for file in ['rfc_model', 'logistic_model']:
 
         try:
-            with open(f'.models/{file}.pkl'):
+            with open(f'./models/{file}.pkl'):
                 logging.info("Testing train_models: SUCCESS")
         except FileNotFoundError as err:
             logging.error(

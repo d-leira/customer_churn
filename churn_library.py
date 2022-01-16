@@ -7,18 +7,20 @@ DATE: january 2022
 
 
 # import libraries
-from sklearn.metrics import classification_report
+import os
+from sklearn.metrics import plot_roc_curve, classification_report
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-import shap
 import joblib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
+
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 
 def import_data(pth):
@@ -31,7 +33,7 @@ def import_data(pth):
         data_pandas: pandas dataframe
     '''
 
-    data_pandas = pd.read_csv(pth)
+    data_pandas = pd.read_csv(pth, index_col= 0)
     data_pandas['Churn'] = data_pandas['Attrition_Flag'].apply(
         lambda val: 0 if val == "Existing Customer" else 1)
 
@@ -49,22 +51,34 @@ def perform_eda(data_pandas):
     '''
 
     plt.figure(figsize=(20, 10))
+    plt.ylabel('Frequency', fontsize = 20)
+    plt.xlabel('Churn', fontsize = 20)
+    plt.title('Churn distribution', fontsize = 24)
     data_pandas['Churn'].hist()
     plt.savefig('./images/eda/churn_hist.png')
 
     plt.figure(figsize=(20, 10))
+    plt.ylabel('Frequency', fontsize = 20)
+    plt.xlabel('Customer_Age', fontsize = 20)
+    plt.title('Customer age distribution', fontsize = 24)
     data_pandas['Customer_Age'].hist()
     plt.savefig('./images/eda/customer_age_hist.png')
 
     plt.figure(figsize=(20, 10))
+    plt.ylabel(r'% of total', fontsize = 20)
+    plt.xlabel('Marital_Status', fontsize = 20)
+    plt.title('Marital status distribution', fontsize = 24)
     data_pandas.Marital_Status.value_counts('normalize').plot(kind='bar')
     plt.savefig('./images/eda/marital_status_freq.png')
 
     plt.figure(figsize=(20, 10))
+    plt.ylabel('Density', fontsize = 20)
+    plt.title('Total transaction count distribution', fontsize = 24)
     sns.distplot(data_pandas['Total_Trans_Ct'])
     plt.savefig('./images/eda/total_trans_distplot.png')
 
     plt.figure(figsize=(20, 10))
+    plt.title('Correlation matrix', fontsize = 24)
     sns.heatmap(data_pandas.corr(), annot=False, cmap='Dark2_r', linewidths=2)
     plt.savefig('./images/eda/corr_heatmap.png')
 
@@ -138,6 +152,32 @@ def perform_feature_engineering(data_pandas, response):
     return X_train, X_test, y_train, y_test
 
 
+def roc_curve_image(lrc_model, cv_rfc_model, X_data, y_data):
+    '''
+    produces roc curve for a trained model and stores it as image in images folder
+    input:
+            lrc_model: logistic regression model object
+            cv_rfc_model: random forest model object
+            X_data: pandas dataframe of X values
+            y_data: pandas Series of y values
+
+    output:
+             None
+    '''
+
+    # plots
+    plt.figure(figsize=(15, 8))
+    ax = plt.gca()
+    plot_roc_curve(lrc_model, X_data, y_data, ax=ax, alpha=0.8)
+    plot_roc_curve(
+        cv_rfc_model,
+        X_data,
+        y_data,
+        ax=ax,
+        alpha=0.8)
+    plt.savefig('./images/results/roc_curve.png')
+
+
 def classification_report_image(y_train,
                                 y_test,
                                 y_train_preds_lr,
@@ -160,27 +200,27 @@ def classification_report_image(y_train,
     '''
 
     # scores
-    plt.rc('figure', figsize=(5, 5))
-    plt.text(0.01, 1.25, str('Random Forest Train'), {
-             'fontsize': 10}, fontproperties='monospace')
+    plt.figure(figsize=(6, 4.5), tight_layout = True)
     plt.text(0.01, 0.05, str(classification_report(y_test, y_test_preds_rf)), {
-             'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
-    plt.text(0.01, 0.6, str('Random Forest Test'), {
              'fontsize': 10}, fontproperties='monospace')
-    plt.text(0.01, 0.7, str(classification_report(y_train, y_train_preds_rf)), {
-             'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
+    plt.text(0.01, 0.4, str('Random Forest Test'), {
+             'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.5, str(classification_report(y_train, y_train_preds_rf)), {
+             'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.85, str('Random Forest Train'), {
+             'fontsize': 10}, fontproperties='monospace')
     plt.axis('off')
     plt.savefig('./images/results/rf_class_report.png')
 
-    plt.rc('figure', figsize=(5, 5))
-    plt.text(0.01, 1.25, str('Logistic Regression Train'),
-             {'fontsize': 10}, fontproperties='monospace')
-    plt.text(0.01, 0.05, str(classification_report(y_train, y_train_preds_lr)), {
-             'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
-    plt.text(0.01, 0.6, str('Logistic Regression Test'), {
+    plt.figure(figsize=(6, 4.5), tight_layout = True)
+    plt.text(0.01, 0.05, str(classification_report(y_test, y_test_preds_lr)), {
              'fontsize': 10}, fontproperties='monospace')
-    plt.text(0.01, 0.7, str(classification_report(y_test, y_test_preds_lr)), {
-             'fontsize': 10}, fontproperties='monospace')  # approach improved by OP -> monospace!
+    plt.text(0.01, 0.4, str('Logistic Regression Test'), {
+             'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.5, str(classification_report(y_train, y_train_preds_lr)), {
+             'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.85, str('Logistic Regression Train'),
+             {'fontsize': 10}, fontproperties='monospace')
     plt.axis('off')
     plt.savefig('./images/results/lr_class_report.png')
 
@@ -197,11 +237,6 @@ def feature_importance_plot(model, X_data, output_pth):
              None
     '''
 
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_data)
-    shap.summary_plot(shap_values, X_data, plot_type="bar")
-    plt.savefig(f'{output_pth}/shap_importances.png')
-
     # Calculate feature importances
     importances = model.feature_importances_
     # Sort feature importances in descending order
@@ -211,19 +246,19 @@ def feature_importance_plot(model, X_data, output_pth):
     names = [X_data.columns[i] for i in indices]
 
     # Create plot
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(20, 9), tight_layout = True)
 
     # Create plot title
-    plt.title("Feature Importance")
-    plt.ylabel('Importance')
+    plt.title("Feature Importance", fontsize = 24)
+    plt.ylabel('Importance', fontsize = 20)
 
     # Add bars
     plt.bar(range(X_data.shape[1]), importances[indices])
 
     # Add feature names as x-axis labels
-    plt.xticks(range(X_data.shape[1]), names, rotation=90)
+    plt.xticks(range(X_data.shape[1]), names, rotation=45)
 
-    plt.savefig(f'{output_pth}/random_forrest_importances.png')
+    plt.savefig(f'{output_pth}/random_forest_importances.png')
 
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -238,8 +273,8 @@ def train_models(X_train, X_test, y_train, y_test):
               None
     '''
 
-    rfc = RandomForestClassifier(random_state=42)
-    lrc = LogisticRegression()
+    rfc = RandomForestClassifier(random_state=42, n_jobs = -1)
+    lrc = LogisticRegression(n_jobs = -1)
 
     param_grid = {
         'n_estimators': [200, 500],
@@ -252,10 +287,10 @@ def train_models(X_train, X_test, y_train, y_test):
     cv_rfc.fit(X_train, y_train)
 
     lrc.fit(X_train, y_train)
-
+    
     y_train_preds_rf = cv_rfc.best_estimator_.predict(X_train)
     y_test_preds_rf = cv_rfc.best_estimator_.predict(X_test)
-
+    
     y_train_preds_lr = lrc.predict(X_train)
     y_test_preds_lr = lrc.predict(X_test)
 
@@ -266,8 +301,10 @@ def train_models(X_train, X_test, y_train, y_test):
                                 y_test_preds_lr,
                                 y_test_preds_rf)
 
+    roc_curve_image(lrc, cv_rfc.best_estimator_, X_test, y_test)
+    
     feature_importance_plot(cv_rfc.best_estimator_, X_test, './images/results')
-
+    
     joblib.dump(cv_rfc.best_estimator_, './models/rfc_model.pkl')
     joblib.dump(lrc, './models/logistic_model.pkl')
 
@@ -288,6 +325,7 @@ if __name__ == '__main__':
 
     df_encoded = encoder_helper(DF, cat_columns, 'Churn')
 
-    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = perform_feature_engineering(df_encoded, 'Churn')
+    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = perform_feature_engineering(
+        df_encoded, 'Churn')
 
     train_models(X_TRAIN, X_TEST, Y_TRAIN, Y_TEST)
