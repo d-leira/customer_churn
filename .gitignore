@@ -1,0 +1,4 @@
+*.csv
+project_1
+.pytest_cache
+__pycache__
